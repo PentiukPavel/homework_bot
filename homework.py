@@ -18,7 +18,6 @@ logging.config.fileConfig('logging_config.ini', disable_existing_loggers=False)
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
-LAST_SENT_MESSAGE = ''
 RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
@@ -105,15 +104,16 @@ def main():
         message = 'Отсутствуют переменные среды!'
         logger.critical(message)
         sys.exit()
-    while check_tokens() is True:
+    current_timestamp = int(time.time())
+    while True:
         bot = telegram.Bot(token=TELEGRAM_TOKEN)
-        current_timestamp = int(time.time())
         try:
             response = get_api_answer(current_timestamp)
             response_json = check_response(response)
             if response_json != []:
                 message = parse_status(response_json[0])
                 send_message(bot, message)
+            current_timestamp = int(time.time())
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             if message != last_sent_error_message:
