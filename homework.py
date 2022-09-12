@@ -35,11 +35,9 @@ logger = logging.getLogger('homework')
 def send_message(bot: telegram.Bot, message: str):
     """Отправка сообщения в Telegram чат."""
     logging.info('Отправка сообщения в Telegram чат.')
-    bot = bot
-    text = message
     try:
-        bot.send_message(TELEGRAM_CHAT_ID, text)
-    except Exception:
+        bot.send_message(TELEGRAM_CHAT_ID, message)
+    except telegram.error.TelegramError:
         logger.exception('Сообщение не отпралено.')
 
 
@@ -48,11 +46,8 @@ def get_api_answer(current_timestamp) -> dict:
     logging.info('Получение ответа от API yandex practicum.')
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
-    try:
-        response = requests.get(url=ENDPOINT, headers=HEADERS, params=params)
-        logging.debug('Ответ от API получен.')
-    except Exception as error:
-        raise GeneralException('Нет связи с API yandex practicum!') from error
+    response = requests.get(url=ENDPOINT, headers=HEADERS, params=params)
+    logging.debug('Ответ от API получен.')
     if response.status_code != HTTPStatus.OK:
         raise GeneralException(
             f'Ответ от API - {response.reason}'
@@ -69,7 +64,7 @@ def check_response(response: dict) -> dict:
     if not isinstance(response, dict):
         raise TypeError('Ответ от API yandex practicum не является словарем.')
     logging.debug('Получен список домашних работ.')
-    if not isinstance(response['homeworks'], list):
+    if not isinstance(response.get('homeworks'), list):
         raise TypeError('Домашние работы не возвращаются в виде списка.')
     if response['homeworks'] == []:
         logging.info('Обновлений нет.')
@@ -105,8 +100,8 @@ def main():
         logger.critical(message)
         sys.exit()
     current_timestamp = int(time.time())
+    bot = telegram.Bot(token=TELEGRAM_TOKEN)
     while True:
-        bot = telegram.Bot(token=TELEGRAM_TOKEN)
         try:
             response = get_api_answer(current_timestamp)
             response_json = check_response(response)
@@ -119,7 +114,7 @@ def main():
             if message != last_sent_error_message:
                 send_message(bot, message)
                 last_sent_error_message = message
-            logger.error(message)
+            logger.exception(message)
         finally:
             time.sleep(RETRY_TIME)
 
