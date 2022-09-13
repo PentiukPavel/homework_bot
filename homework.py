@@ -46,8 +46,13 @@ def get_api_answer(current_timestamp) -> dict:
     logging.info('Получение ответа от API yandex practicum.')
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
-    response = requests.get(url=ENDPOINT, headers=HEADERS, params=params)
-    logging.debug('Ответ от API получен.')
+    try:
+        response = requests.get(url=ENDPOINT, headers=HEADERS, params=params)
+        logging.debug('Ответ от API получен.')
+    except Exception as error:
+        message = f'Нет связи с API yandex practicum {error}'
+        logger.exception(message)
+        raise GeneralException(message)
     if response.status_code != HTTPStatus.OK:
         raise GeneralException(
             f'Ответ от API - {response.reason}'
@@ -66,8 +71,6 @@ def check_response(response: dict) -> dict:
     logging.debug('Получен список домашних работ.')
     if not isinstance(response.get('homeworks'), list):
         raise TypeError('Домашние работы не возвращаются в виде списка.')
-    if response['homeworks'] == []:
-        logging.info('Обновлений нет.')
     return response['homeworks']
 
 
@@ -96,8 +99,7 @@ def main():
     logging.info('Запуск программы.')
     last_sent_error_message = ''
     if not check_tokens():
-        message = 'Отсутствуют переменные среды!'
-        logger.critical(message)
+        logger.critical('Отсутствуют переменные среды!')
         sys.exit()
     current_timestamp = int(time.time())
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
@@ -107,8 +109,9 @@ def main():
             response_json = check_response(response)
             if response_json != []:
                 message = parse_status(response_json[0])
-                send_message(bot, message)
-            current_timestamp = int(time.time())
+            message = 'Обновлений нет.'
+            send_message(bot, message)
+            current_timestamp = response.get('current_date')
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             if message != last_sent_error_message:
