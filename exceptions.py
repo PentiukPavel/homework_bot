@@ -5,7 +5,7 @@ class TelegramBotExceptions(Exception):
 
 
 class GeneralException(TelegramBotExceptions):
-    """Кастоиное исключение для работы телеграм бота."""
+    """Кастомное исключение для работы телеграм бота."""
 
     def __init__(self, message):
         self.message = message
